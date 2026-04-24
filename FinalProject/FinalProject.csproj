@@ -498,6 +498,24 @@
   <ItemGroup>
     <None Include="Resources\download__5_-removebg-preview.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\employees1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\cccccc.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ssssssssss.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\iiiii.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\aaaaaa.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\sssssss.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\SkiaSharp.NativeAssets.macOS.2.88.8\build\net462\SkiaSharp.NativeAssets.macOS.targets" Condition="Exists('..\packages\SkiaSharp.NativeAssets.macOS.2.88.8\build\net462\SkiaSharp.NativeAssets.macOS.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

@@ -30,12 +30,6 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmAdmin));
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-            this.btnCashier = new System.Windows.Forms.Button();
-            this.btnShipment = new System.Windows.Forms.Button();
-            this.btnReports = new System.Windows.Forms.Button();
-            this.btnEmployees = new System.Windows.Forms.Button();
-            this.btnSuppliers = new System.Windows.Forms.Button();
-            this.button1 = new System.Windows.Forms.Button();
             this.colorDialog1 = new System.Windows.Forms.ColorDialog();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.pnlContainer = new System.Windows.Forms.Panel();
@@ -45,6 +39,13 @@
             this.lblAIAlert = new System.Windows.Forms.RichTextBox();
             this.btnAutoRestock = new System.Windows.Forms.Button();
             this.lblAITitle = new System.Windows.Forms.Label();
+            this.btnDarkMode = new System.Windows.Forms.Button();
+            this.btnCashier = new System.Windows.Forms.Button();
+            this.btnShipment = new System.Windows.Forms.Button();
+            this.btnReports = new System.Windows.Forms.Button();
+            this.btnEmployees = new System.Windows.Forms.Button();
+            this.btnSuppliers = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
             this.tableLayoutPanel1.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
             this.pnlContainer.SuspendLayout();
@@ -74,108 +75,6 @@
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel1.Size = new System.Drawing.Size(844, 100);
             this.tableLayoutPanel1.TabIndex = 7;
-            // 
-            // btnCashier
-            // 
-            this.btnCashier.BackColor = System.Drawing.Color.Transparent;
-            this.btnCashier.BackgroundImage = global::FinalProject.Properties.Resources.images;
-            this.btnCashier.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnCashier.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnCashier.FlatAppearance.BorderSize = 0;
-            this.btnCashier.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnCashier.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnCashier.Location = new System.Drawing.Point(3, 3);
-            this.btnCashier.Name = "btnCashier";
-            this.btnCashier.Size = new System.Drawing.Size(119, 94);
-            this.btnCashier.TabIndex = 0;
-            this.btnCashier.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.btnCashier.UseVisualStyleBackColor = false;
-            this.btnCashier.Click += new System.EventHandler(this.btnCashier_Click);
-            // 
-            // btnShipment
-            // 
-            this.btnShipment.BackColor = System.Drawing.Color.Transparent;
-            this.btnShipment.BackgroundImage = global::FinalProject.Properties.Resources.download__4_1;
-            this.btnShipment.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnShipment.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnShipment.FlatAppearance.BorderSize = 0;
-            this.btnShipment.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnShipment.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnShipment.Location = new System.Drawing.Point(676, 3);
-            this.btnShipment.Name = "btnShipment";
-            this.btnShipment.Size = new System.Drawing.Size(165, 94);
-            this.btnShipment.TabIndex = 5;
-            this.btnShipment.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.btnShipment.UseVisualStyleBackColor = false;
-            this.btnShipment.Click += new System.EventHandler(this.btnShipment_Click);
-            // 
-            // btnReports
-            // 
-            this.btnReports.BackColor = System.Drawing.Color.Transparent;
-            this.btnReports.BackgroundImage = global::FinalProject.Properties.Resources.download__2_1;
-            this.btnReports.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnReports.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnReports.FlatAppearance.BorderSize = 0;
-            this.btnReports.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnReports.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnReports.Location = new System.Drawing.Point(389, 3);
-            this.btnReports.Name = "btnReports";
-            this.btnReports.Size = new System.Drawing.Size(131, 94);
-            this.btnReports.TabIndex = 3;
-            this.btnReports.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.btnReports.UseVisualStyleBackColor = false;
-            this.btnReports.Click += new System.EventHandler(this.btnReports_Click);
-            // 
-            // btnEmployees
-            // 
-            this.btnEmployees.BackColor = System.Drawing.Color.Transparent;
-            this.btnEmployees.BackgroundImage = global::FinalProject.Properties.Resources.download__3_1;
-            this.btnEmployees.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnEmployees.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnEmployees.FlatAppearance.BorderSize = 0;
-            this.btnEmployees.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnEmployees.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnEmployees.Location = new System.Drawing.Point(526, 3);
-            this.btnEmployees.Name = "btnEmployees";
-            this.btnEmployees.Size = new System.Drawing.Size(144, 94);
-            this.btnEmployees.TabIndex = 4;
-            this.btnEmployees.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.btnEmployees.UseVisualStyleBackColor = false;
-            this.btnEmployees.Click += new System.EventHandler(this.btnEmployees_Click);
-            // 
-            // btnSuppliers
-            // 
-            this.btnSuppliers.BackColor = System.Drawing.Color.Transparent;
-            this.btnSuppliers.BackgroundImage = global::FinalProject.Properties.Resources.download;
-            this.btnSuppliers.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.btnSuppliers.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnSuppliers.FlatAppearance.BorderSize = 0;
-            this.btnSuppliers.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSuppliers.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnSuppliers.Location = new System.Drawing.Point(128, 3);
-            this.btnSuppliers.Name = "btnSuppliers";
-            this.btnSuppliers.Size = new System.Drawing.Size(139, 94);
-            this.btnSuppliers.TabIndex = 1;
-            this.btnSuppliers.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.btnSuppliers.UseVisualStyleBackColor = false;
-            this.btnSuppliers.Click += new System.EventHandler(this.btnSuppliers_Click);
-            // 
-            // button1
-            // 
-            this.button1.BackColor = System.Drawing.Color.Transparent;
-            this.button1.BackgroundImage = global::FinalProject.Properties.Resources.download__1_1;
-            this.button1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.button1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.button1.FlatAppearance.BorderSize = 0;
-            this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.button1.Location = new System.Drawing.Point(273, 3);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(110, 94);
-            this.button1.TabIndex = 2;
-            this.button1.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
-            this.button1.UseVisualStyleBackColor = false;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // tableLayoutPanel2
             // 
@@ -269,12 +168,126 @@
             this.lblAITitle.TabIndex = 0;
             this.lblAITitle.Text = "Smart Inventory";
             // 
+            // btnDarkMode
+            // 
+            this.btnDarkMode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnDarkMode.Location = new System.Drawing.Point(729, 35);
+            this.btnDarkMode.Name = "btnDarkMode";
+            this.btnDarkMode.Size = new System.Drawing.Size(94, 23);
+            this.btnDarkMode.TabIndex = 9;
+            this.btnDarkMode.Text = "Dark Mode";
+            this.btnDarkMode.UseVisualStyleBackColor = true;
+            this.btnDarkMode.Click += new System.EventHandler(this.btnDarkMode_Click);
+            // 
+            // btnCashier
+            // 
+            this.btnCashier.BackColor = System.Drawing.Color.Transparent;
+            this.btnCashier.BackgroundImage = global::FinalProject.Properties.Resources.cccccc;
+            this.btnCashier.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnCashier.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnCashier.FlatAppearance.BorderSize = 0;
+            this.btnCashier.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnCashier.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnCashier.Location = new System.Drawing.Point(3, 3);
+            this.btnCashier.Name = "btnCashier";
+            this.btnCashier.Size = new System.Drawing.Size(119, 94);
+            this.btnCashier.TabIndex = 0;
+            this.btnCashier.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnCashier.UseVisualStyleBackColor = false;
+            this.btnCashier.Click += new System.EventHandler(this.btnCashier_Click);
+            // 
+            // btnShipment
+            // 
+            this.btnShipment.BackColor = System.Drawing.Color.Transparent;
+            this.btnShipment.BackgroundImage = global::FinalProject.Properties.Resources.sssssss;
+            this.btnShipment.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnShipment.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnShipment.FlatAppearance.BorderSize = 0;
+            this.btnShipment.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnShipment.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnShipment.Location = new System.Drawing.Point(676, 3);
+            this.btnShipment.Name = "btnShipment";
+            this.btnShipment.Size = new System.Drawing.Size(165, 94);
+            this.btnShipment.TabIndex = 5;
+            this.btnShipment.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnShipment.UseVisualStyleBackColor = false;
+            this.btnShipment.Click += new System.EventHandler(this.btnShipment_Click);
+            // 
+            // btnReports
+            // 
+            this.btnReports.BackColor = System.Drawing.Color.Transparent;
+            this.btnReports.BackgroundImage = global::FinalProject.Properties.Resources.aaaaaa;
+            this.btnReports.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnReports.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnReports.FlatAppearance.BorderSize = 0;
+            this.btnReports.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnReports.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnReports.Location = new System.Drawing.Point(389, 3);
+            this.btnReports.Name = "btnReports";
+            this.btnReports.Size = new System.Drawing.Size(131, 94);
+            this.btnReports.TabIndex = 3;
+            this.btnReports.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnReports.UseVisualStyleBackColor = false;
+            this.btnReports.Click += new System.EventHandler(this.btnReports_Click);
+            // 
+            // btnEmployees
+            // 
+            this.btnEmployees.BackColor = System.Drawing.Color.Transparent;
+            this.btnEmployees.BackgroundImage = global::FinalProject.Properties.Resources.employees1;
+            this.btnEmployees.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnEmployees.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnEmployees.FlatAppearance.BorderSize = 0;
+            this.btnEmployees.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnEmployees.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnEmployees.Location = new System.Drawing.Point(526, 3);
+            this.btnEmployees.Name = "btnEmployees";
+            this.btnEmployees.Size = new System.Drawing.Size(144, 94);
+            this.btnEmployees.TabIndex = 4;
+            this.btnEmployees.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnEmployees.UseVisualStyleBackColor = false;
+            this.btnEmployees.Click += new System.EventHandler(this.btnEmployees_Click);
+            // 
+            // btnSuppliers
+            // 
+            this.btnSuppliers.BackColor = System.Drawing.Color.Transparent;
+            this.btnSuppliers.BackgroundImage = global::FinalProject.Properties.Resources.ssssssssss;
+            this.btnSuppliers.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.btnSuppliers.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnSuppliers.FlatAppearance.BorderSize = 0;
+            this.btnSuppliers.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnSuppliers.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnSuppliers.Location = new System.Drawing.Point(128, 3);
+            this.btnSuppliers.Name = "btnSuppliers";
+            this.btnSuppliers.Size = new System.Drawing.Size(139, 94);
+            this.btnSuppliers.TabIndex = 1;
+            this.btnSuppliers.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.btnSuppliers.UseVisualStyleBackColor = false;
+            this.btnSuppliers.Click += new System.EventHandler(this.btnSuppliers_Click);
+            // 
+            // button1
+            // 
+            this.button1.BackColor = System.Drawing.Color.Transparent;
+            this.button1.BackgroundImage = global::FinalProject.Properties.Resources.iiiii;
+            this.button1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.button1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.button1.FlatAppearance.BorderSize = 0;
+            this.button1.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button1.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.button1.Location = new System.Drawing.Point(273, 3);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(110, 94);
+            this.button1.TabIndex = 2;
+            this.button1.TextAlign = System.Drawing.ContentAlignment.BottomCenter;
+            this.button1.UseVisualStyleBackColor = false;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // frmAdmin
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ButtonHighlight;
             this.ClientSize = new System.Drawing.Size(850, 597);
+            this.Controls.Add(this.btnDarkMode);
             this.Controls.Add(this.tableLayoutPanel2);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -310,5 +323,6 @@
         private System.Windows.Forms.Panel pnlContainer;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
         private System.Windows.Forms.Label lblRecommendedQty;
+        private System.Windows.Forms.Button btnDarkMode;
     }
 }

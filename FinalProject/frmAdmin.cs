@@ -64,6 +64,8 @@ namespace FinalProject
 
                 // حقن الشاشة داخل الـ Panel
                 pnlContainer.Controls.Add(activeForm);
+                ThemeManager.ApplyThemeToChildForm(activeForm);
+
                 pnlContainer.Tag = activeForm;
 
                 // 💡 حفظ هذه الشاشة في القاموس لكي لا يتم إنشاؤها مرة أخرى
@@ -336,6 +338,11 @@ namespace FinalProject
         private void panel1_Paint(object sender, PaintEventArgs e)
         {
 
+        }
+
+        private void btnDarkMode_Click(object sender, EventArgs e)
+        {
+            ThemeManager.ToggleDarkMode(this);
         }
     }
 }
