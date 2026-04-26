@@ -6,11 +6,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("FinalProject")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Advanced ERP & POS system powered by machine learning (ML.NET) for smart business management and predictive inventory forecasting.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("FinalProject")]
-[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyCompany("Moustafa Saleh - University Of Jordan")]
+[assembly: AssemblyProduct("Smart Retail Management System - SRMS")]
+[assembly: AssemblyCopyright("Copyright © 2026. All rights reserved")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

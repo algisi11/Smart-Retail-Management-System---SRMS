@@ -43,6 +43,16 @@ namespace FinalProject
         private async Task<string> GetBusinessContextAsync()
         {
             StringBuilder context = new StringBuilder();
+
+            // =========================================================
+            // 🚀 توجيهات نظام صارمة لترويض الذكاء الاصطناعي
+            // =========================================================
+            context.AppendLine("=== توجيهات نظام صارمة لك (System Instructions) ===");
+            context.AppendLine("1. أنت مستشار ذكي لمدير نظام المستودعات. أجب على سؤاله باختصار شديد ووضوح تام.");
+            context.AppendLine("2. أجب عن المطلوب فقط، ولا تقم أبداً بسرد أو ذكر أي معلومات من التقرير أدناه ما لم يطلبها المستخدم صراحة.");
+            context.AppendLine("3. تجنب المقدمات الطويلة، الجمل الترحيبية المكررة، أو الخواتيم الزائدة.");
+            context.AppendLine("===================================================\n");
+
             context.AppendLine("=== تقرير الحالة الشامل للنظام (ERP Data) ===");
 
             using (SqlConnection conn = new SqlConnection(connectionString))
@@ -54,10 +64,10 @@ namespace FinalProject
                 // ---------------------------------------------------------
                 context.AppendLine("\n[1. المبيعات والأداء المالي]");
                 string qSales = @"
-            SELECT 
-                ISNULL((SELECT SUM(TotalAmount) FROM SalesInvoices), 0) AS TotalSales,
-                ISNULL((SELECT SUM(TotalAmount) FROM SalesInvoices WHERE MONTH(InvoiceDate) = MONTH(GETDATE()) AND YEAR(InvoiceDate) = YEAR(GETDATE())), 0) AS MonthSales,
-                ISNULL((SELECT SUM(TotalAmount) FROM SalesInvoices WHERE CAST(InvoiceDate AS DATE) = CAST(GETDATE() AS DATE)), 0) AS TodaySales";
+    SELECT 
+        ISNULL((SELECT SUM(TotalAmount) FROM SalesInvoices), 0) AS TotalSales,
+        ISNULL((SELECT SUM(TotalAmount) FROM SalesInvoices WHERE MONTH(InvoiceDate) = MONTH(GETDATE()) AND YEAR(InvoiceDate) = YEAR(GETDATE())), 0) AS MonthSales,
+        ISNULL((SELECT SUM(TotalAmount) FROM SalesInvoices WHERE CAST(InvoiceDate AS DATE) = CAST(GETDATE() AS DATE)), 0) AS TodaySales";
 
                 using (SqlCommand cmd = new SqlCommand(qSales, conn))
                 using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
@@ -76,14 +86,14 @@ namespace FinalProject
                 context.AppendLine("\n[2. حركة المنتجات الفردية والمخزون (SKU Data)]");
 
                 string qSkuData = @"
-            SELECT 
-                p.ProductName,
-                ISNULL((SELECT SUM(sid.Quantity) 
-                        FROM SalesInvoiceDetails sid 
-                        JOIN SalesInvoices si ON sid.InvoiceID = si.InvoiceID 
-                        WHERE sid.ProductID = p.ProductID AND si.InvoiceDate >= DATEADD(day, -30, GETDATE())), 0) AS Sold30Days,
-                ISNULL((SELECT SUM(Quantity) FROM InventoryBatches WHERE ProductID = p.ProductID), 0) AS CurrentStock
-            FROM Products p";
+    SELECT 
+        p.ProductName,
+        ISNULL((SELECT SUM(sid.Quantity) 
+                FROM SalesInvoiceDetails sid 
+                JOIN SalesInvoices si ON sid.InvoiceID = si.InvoiceID 
+                WHERE sid.ProductID = p.ProductID AND si.InvoiceDate >= DATEADD(day, -30, GETDATE())), 0) AS Sold30Days,
+        ISNULL((SELECT SUM(Quantity) FROM InventoryBatches WHERE ProductID = p.ProductID), 0) AS CurrentStock
+    FROM Products p";
 
                 using (SqlCommand cmd = new SqlCommand(qSkuData, conn))
                 using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
@@ -109,14 +119,14 @@ namespace FinalProject
                 context.AppendLine("\n[3. أداء الموردين وتقييم الجودة (Supplier Evaluation)]");
 
                 string qSuppliers = @"
-            SELECT 
-                s.SupplierName,
-                s.AgreedLeadTime,
-                COUNT(st.TransactionID) AS TotalOrders,
-                ISNULL(AVG(st.DefectPercentage), 0) AS AvgDefectRate
-            FROM Suppliers s
-            JOIN SupplyTransactions st ON s.SupplierID = st.SupplierID
-            GROUP BY s.SupplierName, s.AgreedLeadTime";
+    SELECT 
+        s.SupplierName,
+        s.AgreedLeadTime,
+        COUNT(st.TransactionID) AS TotalOrders,
+        ISNULL(AVG(st.DefectPercentage), 0) AS AvgDefectRate
+    FROM Suppliers s
+    JOIN SupplyTransactions st ON s.SupplierID = st.SupplierID
+    GROUP BY s.SupplierName, s.AgreedLeadTime";
 
                 try
                 {

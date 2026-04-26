@@ -31,6 +31,7 @@
             this.txtPath = new MaterialSkin.Controls.MaterialTextBox();
             this.btnBrowse = new MaterialSkin.Controls.MaterialButton();
             this.btnBackup = new MaterialSkin.Controls.MaterialButton();
+            this.btnRestore = new MaterialSkin.Controls.MaterialButton();
             this.SuspendLayout();
             // 
             // txtPath
@@ -90,16 +91,37 @@
             this.btnBackup.UseVisualStyleBackColor = true;
             this.btnBackup.Click += new System.EventHandler(this.btnBackup_Click);
             // 
+            // btnRestore
+            // 
+            this.btnRestore.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.btnRestore.Density = MaterialSkin.Controls.MaterialButton.MaterialButtonDensity.Default;
+            this.btnRestore.Depth = 0;
+            this.btnRestore.HighEmphasis = true;
+            this.btnRestore.Icon = null;
+            this.btnRestore.Location = new System.Drawing.Point(340, 203);
+            this.btnRestore.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
+            this.btnRestore.MouseState = MaterialSkin.MouseState.HOVER;
+            this.btnRestore.Name = "btnRestore";
+            this.btnRestore.NoAccentTextColor = System.Drawing.Color.Empty;
+            this.btnRestore.Size = new System.Drawing.Size(78, 36);
+            this.btnRestore.TabIndex = 3;
+            this.btnRestore.Text = "BackUp";
+            this.btnRestore.Type = MaterialSkin.Controls.MaterialButton.MaterialButtonType.Contained;
+            this.btnRestore.UseAccentColor = false;
+            this.btnRestore.UseVisualStyleBackColor = true;
+            this.btnRestore.Click += new System.EventHandler(this.btnRestore_Click);
+            // 
             // frmBackup
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(450, 258);
+            this.Controls.Add(this.btnRestore);
             this.Controls.Add(this.btnBackup);
             this.Controls.Add(this.btnBrowse);
             this.Controls.Add(this.txtPath);
             this.Name = "frmBackup";
-            this.Text = "frmBackup";
+            this.Text = "Backup";
             this.Load += new System.EventHandler(this.frmBackup_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -111,5 +133,6 @@
         private MaterialSkin.Controls.MaterialTextBox txtPath;
         private MaterialSkin.Controls.MaterialButton btnBrowse;
         private MaterialSkin.Controls.MaterialButton btnBackup;
+        private MaterialSkin.Controls.MaterialButton btnRestore;
     }
 }

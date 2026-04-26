@@ -25,7 +25,7 @@ namespace FinalProject
 
         private void LoadSuppliers()
         {
-            string query = "SELECT SupplierID, SupplierName, Phone, AgreedLeadTime FROM Suppliers";
+            string query = "SELECT SupplierID, SupplierName, Phone, Email, AgreedLeadTime FROM Suppliers";
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 SqlDataAdapter da = new SqlDataAdapter(query, conn);
@@ -37,7 +37,6 @@ namespace FinalProject
                     dgvSuppliers.Columns["SupplierID"].Visible = false;
 
                 dgvSuppliers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-
                 dgvSuppliers.ReadOnly = true;
                 dgvSuppliers.AllowUserToAddRows = false;
                 dgvSuppliers.AllowUserToDeleteRows = false;
@@ -48,6 +47,7 @@ namespace FinalProject
         {
             txtSupName.Clear();
             txtPhone.Clear();
+            txtEmail.Clear(); // تفريغ الإيميل
             nudLeadTime.Value = 1;
             selectedSupplierId = 0;
             txtSupName.Focus();
@@ -64,45 +64,42 @@ namespace FinalProject
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 conn.Open();
-
                 string checkQuery = "SELECT COUNT(*) FROM Suppliers WHERE SupplierName = @Name";
                 SqlCommand checkCmd = new SqlCommand(checkQuery, conn);
                 checkCmd.Parameters.AddWithValue("@Name", txtSupName.Text.Trim());
 
-                int count = Convert.ToInt32(checkCmd.ExecuteScalar());
-                if (count > 0)
+                if (Convert.ToInt32(checkCmd.ExecuteScalar()) > 0)
                 {
                     MessageBox.Show("This supplier already exists in the system!", "Duplicate Entry", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
-                string query = "INSERT INTO Suppliers (SupplierName, Phone, AgreedLeadTime) VALUES (@Name, @Phone, @LeadTime)";
+                // إضافة الإيميل لجملة الحفظ
+                string query = "INSERT INTO Suppliers (SupplierName, Phone, Email, AgreedLeadTime) VALUES (@Name, @Phone, @Email, @LeadTime)";
                 SqlCommand cmd = new SqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@Name", txtSupName.Text.Trim());
                 cmd.Parameters.AddWithValue("@Phone", txtPhone.Text.Trim());
+                cmd.Parameters.AddWithValue("@Email", txtEmail.Text.Trim()); // هنا
                 cmd.Parameters.AddWithValue("@LeadTime", (int)nudLeadTime.Value);
 
                 cmd.ExecuteNonQuery();
             }
-
             LoadSuppliers();
             ClearFields();
         }
 
         private void btnEdit_Click(object sender, EventArgs e)
         {
-            if (selectedSupplierId == 0)
-            {
-                MessageBox.Show("Please select a supplier from the list first!", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            if (selectedSupplierId == 0) return;
 
-            string query = "UPDATE Suppliers SET SupplierName = @Name, Phone = @Phone, AgreedLeadTime = @LeadTime WHERE SupplierID = @ID";
+            // إضافة الإيميل لجملة التعديل
+            string query = "UPDATE Suppliers SET SupplierName = @Name, Phone = @Phone, Email = @Email, AgreedLeadTime = @LeadTime WHERE SupplierID = @ID";
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 SqlCommand cmd = new SqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@Name", txtSupName.Text.Trim());
                 cmd.Parameters.AddWithValue("@Phone", txtPhone.Text.Trim());
+                cmd.Parameters.AddWithValue("@Email", txtEmail.Text.Trim()); // هنا
                 cmd.Parameters.AddWithValue("@LeadTime", (int)nudLeadTime.Value);
                 cmd.Parameters.AddWithValue("@ID", selectedSupplierId);
 
@@ -145,14 +142,10 @@ namespace FinalProject
                 txtSupName.Text = row.Cells["SupplierName"].Value.ToString();
                 txtPhone.Text = row.Cells["Phone"].Value.ToString();
 
-                if (row.Cells["AgreedLeadTime"].Value != DBNull.Value)
-                {
-                    nudLeadTime.Value = Convert.ToDecimal(row.Cells["AgreedLeadTime"].Value);
-                }
-                else
-                {
-                    nudLeadTime.Value = 0;
-                }
+                // جلب الإيميل
+                txtEmail.Text = row.Cells["Email"].Value != DBNull.Value ? row.Cells["Email"].Value.ToString() : "";
+
+                nudLeadTime.Value = row.Cells["AgreedLeadTime"].Value != DBNull.Value ? Convert.ToDecimal(row.Cells["AgreedLeadTime"].Value) : 0;
             }
         }
         private void dgvSuppliers_CellContentClick(object sender, DataGridViewCellEventArgs e)

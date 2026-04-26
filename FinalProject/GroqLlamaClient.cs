@@ -13,7 +13,7 @@ namespace FinalProject
     public class GroqLlamaClient
     {
         // ⚠️ تحذير: تجنب رفع هذا المفتاح على الإنترنت العام. ضع مفتاحك الحقيقي هنا:
-        private readonly string apiKey = "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";
+        private readonly string apiKey = "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";
         private readonly string endpoint = "https://api.groq.com/openai/v1/chat/completions";
 
         // =========================================================

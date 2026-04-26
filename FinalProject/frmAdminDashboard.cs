@@ -412,29 +412,63 @@ namespace FinalProject
             // 1. إنشاء الشاشة المنبثقة (Modal)
             Form popup = new Form()
             {
-                Width = 650,
-                Height = 500,
+                Width = 680,
+                Height = 540,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 Text = "الذكاء الاصطناعي - توقعات الطلب للمستودع",
                 StartPosition = FormStartPosition.CenterScreen,
                 MaximizeBox = false,
                 MinimizeBox = false,
-                BackColor = Color.White
+                BackColor = Color.White,
+                RightToLeft = RightToLeft.Yes
             };
 
-            // 2. تصميم الأدوات (العنوان، الزر، رسالة التحميل، والجدول)
-            Label lblTitle = new Label() { Text = "تقرير التنبؤ باحتياجات المستودع للـ 7 أيام القادمة", Left = 20, Top = 15, Width = 500, Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = Color.DarkSlateBlue };
+            // 2. بناء عناصر الشاشة
+            Label lblTitle = new Label()
+            {
+                Text = "تقرير التنبؤ باحتياجات المستودع للـ 7 أيام القادمة",
+                Left = 20,
+                Top = 15,
+                Width = 620,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                ForeColor = Color.DarkSlateBlue,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
 
-            Button btnRun = new Button() { Text = "🚀 بدء التحليل الذكي", Left = 20, Top = 50, Width = 200, Height = 35, BackColor = Color.MediumSlateBlue, ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10, FontStyle.Bold) };
+            Button btnRun = new Button()
+            {
+                Text = "🚀 بدء التحليل الذكي",
+                Left = 20,
+                Top = 50,
+                Width = 200,
+                Height = 35,
+                BackColor = Color.MediumSlateBlue,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
 
-            Label lblStatus = new Label() { Text = "⏳ جاري قراءة البيانات وتدريب النماذج... يرجى الانتظار", Left = 230, Top = 58, Width = 380, Font = new Font("Segoe UI", 10, FontStyle.Italic), ForeColor = Color.Gray, Visible = false };
+            // ✅ الـ Label الذي سيعرض الحالة خطوة بخطوة — مع زيادة الحجم لاستيعاب النص
+            Label lblStatus = new Label()
+            {
+                Text = "",
+                Left = 20,
+                Top = 92,
+                Width = 630,
+                Height = 40,
+                Font = new Font("Segoe UI", 9, FontStyle.Italic),
+                ForeColor = Color.Gray,
+                Visible = false,
+                TextAlign = ContentAlignment.MiddleRight
+            };
 
             DataGridView dgvForecast = new DataGridView()
             {
                 Left = 20,
-                Top = 100,
-                Width = 590,
-                Height = 330,
+                Top = 140,
+                Width = 630,
+                Height = 320,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 AllowUserToAddRows = false,
                 ReadOnly = true,
@@ -443,29 +477,47 @@ namespace FinalProject
                 RowHeadersVisible = false
             };
 
-            // 3. برمجة الحدث الموازي (Asynchronous) لتشغيل المحرك
+            // 3. ربط حدث الزر مع الـ callback
             btnRun.Click += async (s, args) =>
             {
                 btnRun.Enabled = false;
                 lblStatus.Visible = true;
-                lblStatus.Text = "⏳ جاري قراءة البيانات وتدريب النماذج... يرجى الانتظار";
                 lblStatus.ForeColor = Color.Gray;
+                lblStatus.Text = "⏳ جاري التهيئة...";
                 dgvForecast.DataSource = null;
 
                 try
                 {
-                    // 🌟 السطر السحري الجديد بدلاً من السطر القديم الذي حذفته
-                    var report = await System.Threading.Tasks.Task.Run(() =>
+                    List<ForecastReportItem> report = null;
+
+                    // ✅ تشغيل المحرك في الخلفية مع تمرير الـ callback
+                    // الـ callback يستخدم Invoke لأن التحديث يجب أن يحدث على الـ UI Thread
+                    await System.Threading.Tasks.Task.Run(() =>
                     {
-                        // استخدام اسم الكلاس الخاص بك
                         SalesForecaster engine = new SalesForecaster();
-                        return engine.RunInventoryForecast(); // تشغيل المحرك المجمع
+
+                        report = engine.RunInventoryForecast(progressMessage =>
+                        {
+                            // Invoke ضروري لأننا داخل Thread مختلف
+                            if (lblStatus.IsHandleCreated && !lblStatus.IsDisposed)
+                            {
+                                lblStatus.Invoke(new Action(() =>
+                                {
+                                    lblStatus.Text = progressMessage;
+                                    lblStatus.ForeColor = progressMessage.StartsWith("✅")
+                                                            ? Color.Green
+                                                            : progressMessage.StartsWith("⚠️")
+                                                                ? Color.OrangeRed
+                                                                : Color.DarkSlateBlue;
+                                    lblStatus.Refresh(); // إجبار الـ UI على إعادة الرسم فوراً
+                                }));
+                            }
+                        });
                     });
 
-                    // عرض النتيجة في الجدول
+                    // 4. عرض النتيجة في الجدول
                     dgvForecast.DataSource = report;
 
-                    // تنسيق أسماء الأعمدة
                     if (dgvForecast.Columns.Count > 0)
                     {
                         dgvForecast.Columns["ProductName"].HeaderText = "اسم المنتج";
@@ -473,13 +525,24 @@ namespace FinalProject
                         dgvForecast.Columns["Status"].HeaderText = "حالة الطلب";
                     }
 
-                    lblStatus.Text = "✅ اكتمل التحليل بنجاح!";
-                    lblStatus.ForeColor = Color.Green;
+                    // تلوين الصفوف حسب الحالة
+                    foreach (DataGridViewRow row in dgvForecast.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+                        string status = row.Cells["Status"].Value?.ToString() ?? "";
+                        if (status.Contains("يحتاج تعزيز"))
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(255, 235, 235);
+                        else if (status.Contains("تقدير بالمتوسط"))
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(255, 250, 220);
+                        else
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(235, 255, 235);
+                    }
                 }
                 catch (Exception ex)
                 {
                     MessageBox.Show("حدث خطأ أثناء التحليل: " + ex.Message, "خطأ تقني", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    lblStatus.Visible = false;
+                    lblStatus.Text = "❌ فشل التحليل. راجع الخطأ.";
+                    lblStatus.ForeColor = Color.Red;
                 }
                 finally
                 {
@@ -488,7 +551,7 @@ namespace FinalProject
                 }
             };
 
-            // 4. إضافة الأدوات وعرض الشاشة
+            // 5. إضافة العناصر وعرض الشاشة
             popup.Controls.Add(lblTitle);
             popup.Controls.Add(btnRun);
             popup.Controls.Add(lblStatus);

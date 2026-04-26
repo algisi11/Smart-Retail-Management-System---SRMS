@@ -86,6 +86,74 @@ namespace FinalProject
                 btnBackup.Text = "بدء النسخ الاحتياطي";
             }
         }
+
+        private void btnRestore_Click(object sender, EventArgs e)
+        {
+            using (OpenFileDialog ofd = new OpenFileDialog())
+            {
+                ofd.Filter = "SQL Server Backup Files (*.bak)|*.bak";
+                ofd.Title = "اختر ملف النسخة الاحتياطية لاستعادته";
+
+                if (ofd.ShowDialog() == DialogResult.OK)
+                {
+                    string backupFilePath = ofd.FileName;
+
+                    // 2. تحذير أمني شديد اللهجة قبل الاستعادة
+                    DialogResult dialogResult = MessageBox.Show(
+                        "تحذير خطير: استعادة النسخة الاحتياطية ستمسح جميع البيانات والمبيعات الحالية وتستبدلها ببيانات النسخة المحددة!\n\nهل أنت متأكد تماماً من رغبتك في الاستمرار؟",
+                        "تأكيد الاستعادة الجذري",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Warning,
+                        MessageBoxDefaultButton.Button2); // جعل الزر الافتراضي "لا" لتجنب الضغط بالخطأ
+
+                    if (dialogResult == DialogResult.Yes)
+                    {
+                        // 3. الاتصال بقاعدة master حصراً لإدارة الاستعادة
+                        string masterConnectionString = @"Server=.;Database=master;Integrated Security=True;";
+
+                        // 4. استعلام الطرد، الاستبدال، وإعادة التشغيل
+                        string restoreQuery = $@"
+                            ALTER DATABASE [SmartInventoryDB] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                            RESTORE DATABASE [SmartInventoryDB] FROM DISK = '{backupFilePath}' WITH REPLACE;
+                            ALTER DATABASE [SmartInventoryDB] SET MULTI_USER;";
+
+                        try
+                        {
+                            this.Cursor = Cursors.WaitCursor;
+                            // بافتراض أن اسم زر الاستعادة هو btnRestore
+                            // btnRestore.Enabled = false;
+                            // btnRestore.Text = "⏳ جاري الاستعادة...";
+
+                            using (SqlConnection conn = new SqlConnection(masterConnectionString))
+                            {
+                                using (SqlCommand cmd = new SqlCommand(restoreQuery, conn))
+                                {
+                                    conn.Open();
+                                    cmd.CommandTimeout = 300; // إعطاء وقت كافي للعملية
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+
+                            SystemLogger.LogAction("استعادة نسخة احتياطية", $"تم استعادة القاعدة بنجاح من الملف: {backupFilePath}");
+                            MessageBox.Show("تمت استعادة النسخة الاحتياطية بنجاح!\n\nسيتم إعادة تشغيل النظام الآن لتحديث البيانات.", "عملية ناجحة", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            // 5. خطوة إجبارية: إعادة تشغيل البرنامج لضمان مسح أي بيانات قديمة من الرام
+                            Application.Restart();
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("حدث خطأ أثناء الاستعادة:\n" + ex.Message, "خطأ تقني", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                        finally
+                        {
+                            this.Cursor = Cursors.Default;
+                            // btnRestore.Enabled = true;
+                            // btnRestore.Text = "استعادة النسخة الاحتياطية";
+                        }
+                    }
+                }
+            }
+        }
     }
     }
 

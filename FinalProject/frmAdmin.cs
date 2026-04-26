@@ -24,6 +24,8 @@ namespace FinalProject
         int recommendedQty = 0;
         private string currentSupplierPhone = ""; // متغير لتخزين الرقم المجلوب
         private GroqLlamaClient groqClient = new GroqLlamaClient();
+        string currentSupplierName = "";
+        string currentSupplierEmail = "";
         public frmAdmin()
         {
             InitializeComponent();
@@ -211,8 +213,6 @@ namespace FinalProject
         {
             try
             {
-                // 🌟 التصحيح 1: حماية من أخطاء الـ SQL (SQL Injection & Syntax Errors)
-                // إذا كان اسم المنتج يحتوي على ' سيتم مضاعفتها لتجنب كسر الاستعلام
                 string excludedProducts = "''";
                 if (orderedProductsList.Count > 0)
                 {
@@ -220,13 +220,48 @@ namespace FinalProject
                     excludedProducts = "'" + string.Join("','", safeList) + "'";
                 }
 
+                // الاستعلام المصحح 100%
                 string query = $@"
-        SELECT TOP 1 p.ProductName, p.SupplierPhone, (10 - SUM(b.Quantity)) as RecommendedQty
-        FROM InventoryBatches b
-        JOIN Products p ON b.ProductID = p.ProductID
-        WHERE p.ProductName NOT IN ({excludedProducts})
-        GROUP BY p.ProductName, p.SupplierPhone
-        HAVING SUM(b.Quantity) <= 5";
+DECLARE @BestSupplierID INT;
+
+-- تحديد أفضل مورد في النظام
+SELECT TOP 1 @BestSupplierID = s.SupplierID
+FROM Suppliers s
+LEFT JOIN SupplyTransactions st ON s.SupplierID = st.SupplierID
+GROUP BY s.SupplierID, s.AgreedLeadTime
+ORDER BY s.AgreedLeadTime ASC, ISNULL(AVG(st.DefectPercentage), 0) ASC;
+
+-- الاستعلام الرئيسي
+SELECT TOP 1 
+    p.ProductName, 
+    (10 - ISNULL(SUM(b.Quantity), 0)) as RecommendedQty,
+    
+    ISNULL(
+        (SELECT TOP 1 s.SupplierName FROM SupplyTransactions st JOIN Suppliers s ON st.SupplierID = s.SupplierID WHERE st.ProductID = p.ProductID ORDER BY st.SupplyDate DESC),
+        (SELECT SupplierName FROM Suppliers WHERE SupplierID = @BestSupplierID)
+    ) AS SupName,
+    
+    ISNULL(
+        (SELECT TOP 1 s.Phone FROM SupplyTransactions st JOIN Suppliers s ON st.SupplierID = s.SupplierID WHERE st.ProductID = p.ProductID ORDER BY st.SupplyDate DESC),
+        (SELECT Phone FROM Suppliers WHERE SupplierID = @BestSupplierID)
+    ) AS SupPhone,
+    
+    ISNULL(
+        (SELECT TOP 1 s.Email FROM SupplyTransactions st JOIN Suppliers s ON st.SupplierID = s.SupplierID WHERE st.ProductID = p.ProductID ORDER BY st.SupplyDate DESC),
+        (SELECT Email FROM Suppliers WHERE SupplierID = @BestSupplierID)
+    ) AS SupEmail,
+
+    -- 🌟 تم تصحيح حرف الـ st هنا
+    CASE 
+        WHEN (SELECT TOP 1 st.SupplierID FROM SupplyTransactions st WHERE st.ProductID = p.ProductID) IS NULL THEN 1 
+        ELSE 0 
+    END AS IsSmartAlternative
+
+FROM Products p
+LEFT JOIN InventoryBatches b ON p.ProductID = b.ProductID
+WHERE p.ProductName NOT IN ({excludedProducts})
+GROUP BY p.ProductID, p.ProductName
+HAVING ISNULL(SUM(b.Quantity), 0) <= 5";
 
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
@@ -237,18 +272,34 @@ namespace FinalProject
                         if (reader.Read())
                         {
                             urgentProduct = reader["ProductName"].ToString();
-                            currentSupplierPhone = reader["SupplierPhone"].ToString();
-
-                            // حماية إضافية في حال كانت الكمية المحسوبة سالبة أو فارغة
+                            currentSupplierName = reader["SupName"]?.ToString() ?? "غير معروف";
+                            currentSupplierPhone = reader["SupPhone"]?.ToString() ?? "";
+                            currentSupplierEmail = reader["SupEmail"]?.ToString() ?? "";
                             recommendedQty = reader["RecommendedQty"] != DBNull.Value ? Convert.ToInt32(reader["RecommendedQty"]) : 10;
 
-                            lblAIAlert.Text = urgentProduct;
+                            bool isSmartAlternative = Convert.ToInt32(reader["IsSmartAlternative"]) == 1;
+
+                            string alertMessage = $"⚠️ تنبيه: صنف [{urgentProduct}] سينفد!\n";
+
+                            if (isSmartAlternative)
+                            {
+                                alertMessage += $"🌟 المقترح (الأسرع والأجود): {currentSupplierName}\n";
+                            }
+                            else
+                            {
+                                alertMessage += $"المورد المعتمد: {currentSupplierName}\n";
+                            }
+
+                            alertMessage += $"الهاتف: {currentSupplierPhone}\n" +
+                                            $"الإيميل: {(string.IsNullOrEmpty(currentSupplierEmail) ? "❌ غير مسجل" : currentSupplierEmail)}";
+
+                            lblAIAlert.Text = alertMessage;
                             lblRecommendedQty.Text = $"الكمية المطلوبة: {recommendedQty}";
                             pnlAICommand.Visible = true;
                         }
                         else
                         {
-                            MessageBox.Show("عمل رائع! تم إرسال طلبات توريد لجميع المنتجات الناقصة.", "اكتملت المهمة", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("تمت معالجة جميع النواقص بنجاح!", "اكتملت المهمة", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             pnlAICommand.Visible = false;
                             orderedProductsList.Clear();
                         }
@@ -257,7 +308,7 @@ namespace FinalProject
             }
             catch (Exception ex)
             {
-                MessageBox.Show("خطأ في جلب المنتج التالي: " + ex.Message, "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("خطأ تقني: " + ex.Message, "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -269,68 +320,87 @@ namespace FinalProject
 
             try
             {
-                string prompt = $"اكتب رسالة واتساب قصيرة وودية جداً للمورد، أطلب فيها توريد كمية ({recommendedQty}) حبة من صنف ({urgentProduct}). ابدأ بـ 'مرحبا' وانهِ الرسالة بشكر. لا تضع أي ردود أو مقدمات، أريد نص الرسالة فقط لنسخها.";
+                int orderQty = recommendedQty > 0 ? recommendedQty : 50;
 
-                // 🌟 التعديل السحري: استخدام كلاس GroqLlamaClient الجديد
-                string systemMessage = "تجاهل بيانات النظام، أنت مساعد ذكي خبير في صياغة رسائل المشتريات والواتساب المباشرة.";
+                string prompt = $"قم بصياغة رسالة توريد تجارية قصيرة ومباشرة للمورد، أطلب فيها توريد كمية ({orderQty}) حبة من صنف ({urgentProduct}). ابدأ بـ 'مرحبا' وانهِ الرسالة بشكر. لا تضع أي ردود أو مقدمات، أريد نص الرسالة فقط لنسخها.";
+
+                string systemMessage = "تجاهل بيانات النظام، أنت مساعد ذكي خبير في صياغة رسائل المشتريات المباشرة.";
                 string aiDraft = await groqClient.AskAIAsync(systemMessage, prompt);
-                // (إذا كانت دالة AskAI لديك تأخذ برامتر واحد فقط وهو الـ prompt، يمكنك حذف الـ systemMessage وتمرير الـ prompt فقط)
 
                 DialogResult dialogResult = MessageBox.Show(
-                    "قام الذكاء الاصطناعي بصياغة طلب التوريد التالي:\n\n" + aiDraft + "\n\nهل تريد تحويل هذا الطلب إلى الواتساب الآن؟",
-                    "تأكيد الإرسال",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Information);
+                    "قام الذكاء الاصطناعي بصياغة طلب التوريد التالي:\n\n" + aiDraft + "\n\nكيف تود إرسال هذا الطلب للمورد؟\nاختر [Yes] للواتساب، أو [No] للإيميل.",
+                    "خيارات الإرسال",
+                    MessageBoxButtons.YesNoCancel,
+                    MessageBoxIcon.Question);
+
+                if (dialogResult == DialogResult.Cancel)
+                {
+                    return;
+                }
+
+                // تشفير الرسالة لتكون متوافقة مع الروابط (URL Encoding)
+                string encodedMessage = Uri.EscapeDataString(aiDraft);
 
                 if (dialogResult == DialogResult.Yes)
                 {
-                    // تنظيف رقم الهاتف وتهيئته للواتساب
+                    // ================== مسار الواتساب ==================
                     string cleanPhone = "";
                     if (!string.IsNullOrEmpty(currentSupplierPhone))
                     {
                         cleanPhone = new string(currentSupplierPhone.Where(char.IsDigit).ToArray());
-
-                        if (cleanPhone.StartsWith("0"))
-                        {
-                            cleanPhone = "962" + cleanPhone.Substring(1); // بافتراض مفتاح الأردن 962
-                        }
+                        if (cleanPhone.StartsWith("0")) cleanPhone = "962" + cleanPhone.Substring(1);
                     }
 
                     if (string.IsNullOrEmpty(cleanPhone))
                     {
-                        MessageBox.Show("رقم هاتف المورد غير صالح أو غير مسجل.", "خطأ في الرقم", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return;
+                        Clipboard.SetText(aiDraft);
+                        MessageBox.Show("لا يوجد رقم مورد مسجل لهذا الصنف (أو لم يتم توريده سابقاً).\n\nتم نسخ رسالة الذكاء الاصطناعي إلى الحافظة (Clipboard) لتتمكن من إرسالها يدوياً.", "تم النسخ", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
-
-                    // استخدام رابط الواتساب الرسمي
-                    string encodedMessage = Uri.EscapeDataString(aiDraft);
-                    string whatsappUrl = $"https://api.whatsapp.com/send?phone={cleanPhone}&text={encodedMessage}";
-
-                    try
+                    else
                     {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = whatsappUrl,
-                            UseShellExecute = true
-                        });
+                        string whatsappUrl = $"https://api.whatsapp.com/send?phone={cleanPhone}&text={encodedMessage}";
+                        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = whatsappUrl, UseShellExecute = true }); }
+                        catch { System.Diagnostics.Process.Start("explorer.exe", $"\"{whatsappUrl}\""); }
                     }
-                    catch
-                    {
-                        System.Diagnostics.Process.Start("explorer.exe", $"\"{whatsappUrl}\"");
-                    }
-
-                    // تحديث القائمة وجلب المنتج التالي
-                    orderedProductsList.Add(urgentProduct);
-                    LoadNextUrgentProduct();
                 }
+                else if (dialogResult == DialogResult.No)
+                {
+                    // ================== مسار الإيميل (Gmail المباشر) ==================
+                    if (string.IsNullOrEmpty(currentSupplierEmail) || currentSupplierEmail.Contains("غير مسجل"))
+                    {
+                        Clipboard.SetText(aiDraft);
+                        MessageBox.Show("البريد الإلكتروني للمورد غير مسجل لهذا الصنف.\n\nتم نسخ رسالة الذكاء الاصطناعي إلى الحافظة (Clipboard) لتتمكن من إرسالها يدوياً من إيميلك.", "تم النسخ", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        // تشفير عنوان الرسالة أيضاً
+                        string subject = Uri.EscapeDataString($"طلب توريد بضاعة: {urgentProduct}");
+
+                        // 🌟 الرابط السحري الخاص بـ Gmail (يقوم بفتح نافذة إنشاء رسالة جديدة وتعبئة الحقول)
+                        string gmailUrl = $"https://mail.google.com/mail/?view=cm&fs=1&to={currentSupplierEmail}&su={subject}&body={encodedMessage}";
+
+                        try
+                        {
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = gmailUrl, UseShellExecute = true });
+                        }
+                        catch
+                        {
+                            System.Diagnostics.Process.Start("explorer.exe", $"\"{gmailUrl}\"");
+                        }
+                    }
+                }
+
+                // تحديث القائمة وجلب المنتج التالي
+                orderedProductsList.Add(urgentProduct);
+                LoadNextUrgentProduct();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("حدث خطأ أثناء الاتصال بخوادم Groq أو الواتساب: " + ex.Message, "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("حدث خطأ أثناء الاتصال: " + ex.Message, "خطأ", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                btnAutoRestock.Text = "💡 تنفيذ طلب توريد عبر الواتساب";
+                btnAutoRestock.Text = "💡 تنفيذ طلب توريد";
                 btnAutoRestock.Enabled = true;
             }
         }
