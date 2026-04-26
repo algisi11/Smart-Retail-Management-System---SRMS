@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -10,26 +12,68 @@ using Newtonsoft.Json.Linq;
 namespace FinalProject
 {
     // كلاس للعمل بـ Llama 3 عبر سيرفرات Groq الخارقة السرعة
-    public class GroqLlamaClient
+    public class GroqLlamaClient : IDisposable
     {
-        // ⚠️ تحذير: تجنب رفع هذا المفتاح على الإنترنت العام. ضع مفتاحك الحقيقي هنا:
+        // ✅ المفتاح يُقرأ من ملف خارجي بدلاً من تضمينه في الكود
         private readonly string apiKey = System.IO.File.ReadAllText("apikey.txt").Trim();
         private readonly string endpoint = "https://api.groq.com/openai/v1/chat/completions";
+
+        // =========================================================
+        // ✅ HttpClient ثابت مشترك لتجنب socket exhaustion
+        // =========================================================
+        private static readonly HttpClient _sharedClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
 
         // =========================================================
         // 🌟 ذاكرة الذكاء الاصطناعي (مبنية على معيار OpenAI)
         // =========================================================
         private List<object> conversationHistory = new List<object>();
 
-        public async Task<string> AskAIAsync(string reportData, string userQuestion, string imagePath = null)
+        // ✅ الحد الأقصى لعدد الرسائل في الذاكرة قبل التنظيف التلقائي
+        private const int MAX_HISTORY_MESSAGES = 20;
+
+        // ✅ خاصية لمعرفة حجم المحادثة الحالية من الخارج
+        public int ConversationLength => conversationHistory.Count;
+
+        // =========================================================
+        // ✅ دالة AskAIAsync المحسّنة مع CancellationToken
+        // =========================================================
+        public async Task<string> AskAIAsync(
+            string reportData,
+            string userQuestion,
+            string imagePath = null,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 // إجبار البرنامج على استخدام بروتوكولات التشفير الحديثة
-                System.Net.ServicePointManager.SecurityProtocol = System.Net.SecurityProtocolType.Tls12 | System.Net.SecurityProtocolType.Tls13;
+                System.Net.ServicePointManager.SecurityProtocol =
+                    System.Net.SecurityProtocolType.Tls12 |
+                    System.Net.SecurityProtocolType.Tls13;
+
+                // ✅ تنظيف الذاكرة تلقائياً إذا تجاوزت الحد الأقصى
+                // نحتفظ برسالة النظام (index 0) + آخر 10 رسائل فقط
+                if (conversationHistory.Count > MAX_HISTORY_MESSAGES)
+                {
+                    var systemMessage = conversationHistory.FirstOrDefault();
+                    var recentMessages = conversationHistory
+                        .Skip(conversationHistory.Count - 10)
+                        .ToList();
+
+                    conversationHistory.Clear();
+
+                    if (systemMessage != null)
+                        conversationHistory.Add(systemMessage);
+
+                    conversationHistory.AddRange(recentMessages);
+                }
 
                 // 1. تنظيف البيانات
-                string cleanReportData = string.IsNullOrWhiteSpace(reportData) ? "لا توجد بيانات." : reportData.Trim();
+                string cleanReportData = string.IsNullOrWhiteSpace(reportData)
+                    ? "لا توجد بيانات."
+                    : reportData.Trim();
 
                 // 2. هندسة الأوامر المتقدمة (Executive Prompt Engineering)
                 string imageWarning = !string.IsNullOrEmpty(imagePath)
@@ -48,96 +92,125 @@ namespace FinalProject
 [بيانات النظام الحالية المتاحة لك للتحليل:
 {cleanReportData}]{imageWarning}";
 
-                // 💡 التصحيح المنطقي: تحديث بيانات النظام دائماً لكي يرى أحدث النواقص وتغيرات المستودع
+                // ✅ تحديث بيانات النظام دائماً لكي يرى أحدث التغييرات
                 if (conversationHistory.Count == 0)
-                {
                     conversationHistory.Add(new { role = "system", content = systemPrompt });
-                }
                 else
-                {
-                    conversationHistory[0] = new { role = "system", content = systemPrompt }; // استبدال القديم بالجديد
-                }
+                    conversationHistory[0] = new { role = "system", content = systemPrompt };
 
                 // إضافة سؤال المستخدم للذاكرة
                 conversationHistory.Add(new { role = "user", content = userQuestion });
 
-                // 3. تجهيز جسم الطلب بصيغة JSON المعتمدة لـ Groq
+                // 3. تجهيز جسم الطلب
                 var requestBody = new
                 {
-                    model = "llama-3.1-8b-instant", // النسخة الأحدث والأسرع
+                    model = "llama-3.1-8b-instant",
                     messages = conversationHistory,
-                    temperature = 0.7, // نسبة الإبداع
+                    temperature = 0.7,
                     max_tokens = 1024
                 };
 
                 string jsonString = JsonConvert.SerializeObject(requestBody);
 
+                // ✅ ضبط Authorization مرة واحدة فقط إذا لم تكن مضبوطة مسبقاً
+                if (_sharedClient.DefaultRequestHeaders.Authorization == null)
+                {
+                    _sharedClient.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", apiKey);
+                }
+
                 // 🛡️ هندسة المحاولة التلقائية
                 int maxRetries = 3;
                 int delayMilliseconds = 1500;
 
-                using (HttpClient client = new HttpClient())
+                for (int i = 0; i < maxRetries; i++)
                 {
-                    // 🚀 مصادقة Groq (Bearer Token)
-                    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                    // ✅ التحقق من إلغاء الطلب قبل كل محاولة
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    for (int i = 0; i < maxRetries; i++)
+                    using (var content = new StringContent(jsonString, Encoding.UTF8, "application/json"))
                     {
-                        using (var content = new StringContent(jsonString, Encoding.UTF8, "application/json"))
+                        HttpResponseMessage response = await _sharedClient
+                            .PostAsync(endpoint, content, cancellationToken);
+
+                        string responseString = await response.Content.ReadAsStringAsync();
+
+                        if (response.IsSuccessStatusCode)
                         {
-                            // إرسال الطلب
-                            HttpResponseMessage response = await client.PostAsync(endpoint, content);
-                            string responseString = await response.Content.ReadAsStringAsync();
+                            JObject parsedJson = JObject.Parse(responseString);
+                            string aiReplyRaw = parsedJson["choices"][0]["message"]["content"].ToString();
 
-                            if (response.IsSuccessStatusCode)
+                            // إضافة الرد للذاكرة
+                            conversationHistory.Add(new { role = "assistant", content = aiReplyRaw });
+
+                            // تنظيف رموز Markdown وتحويل أسطر Linux لـ Windows
+                            string cleanReply = aiReplyRaw
+                                .Replace("**", "")
+                                .Replace("*", "-");
+
+                            string windowsFormattedReply = cleanReply.Replace("\n", "\r\n");
+
+                            return "\r\n" + windowsFormattedReply.Trim() + "\r\n";
+                        }
+                        else if ((int)response.StatusCode == 429 || (int)response.StatusCode == 503)
+                        {
+                            // 429: Rate Limit | 503: Server Busy
+                            if (i == maxRetries - 1)
                             {
-                                JObject parsedJson = JObject.Parse(responseString);
-                                string aiReplyRaw = parsedJson["choices"][0]["message"]["content"].ToString();
-
-                                // إضافة الرد للذاكرة للاحتفاظ بالسياق (اسم المتحدث هنا assistant وليس model)
-                                conversationHistory.Add(new { role = "assistant", content = aiReplyRaw });
-
-                                // 1. تنظيف الرموز الخاصة بـ Markdown
-                                string cleanReply = aiReplyRaw.Replace("**", "").Replace("*", "-");
-
-                                // 2. 🚀 السحر هنا: تحويل فواصل أسطر السيرفر (\n) إلى فواصل الويندوز (\r\n)
-                                string windowsFormattedReply = cleanReply.Replace("\n", "\r\n");
-
-                                return "\r\n" + windowsFormattedReply.Trim() + "\r\n";
-                            }
-                            else if ((int)response.StatusCode == 429 || (int)response.StatusCode == 503)
-                            {
-                                // 429: Rate Limit (تجاوزت الحد المسموح في الدقيقة)
-                                // 503: Server Busy
-                                if (i == maxRetries - 1)
-                                {
+                                // إزالة سؤال المستخدم من الذاكرة لأن الطلب فشل
+                                if (conversationHistory.Count > 1)
                                     conversationHistory.RemoveAt(conversationHistory.Count - 1);
-                                    return "عذراً، سيرفرات Llama مشغولة أو تجاوزت الحد المسموح. يرجى المحاولة لاحقاً.";
-                                }
-                                await Task.Delay(delayMilliseconds);
-                                delayMilliseconds *= 2;
+
+                                return "عذراً، سيرفرات Llama مشغولة أو تجاوزت الحد المسموح. يرجى المحاولة لاحقاً.";
                             }
-                            else
-                            {
-                                // خطأ قاتل
+
+                            // انتظار تصاعدي قبل المحاولة التالية
+                            await Task.Delay(delayMilliseconds, cancellationToken);
+                            delayMilliseconds *= 2;
+                        }
+                        else
+                        {
+                            // خطأ قاتل غير قابل للمعالجة
+                            if (conversationHistory.Count > 1)
                                 conversationHistory.RemoveAt(conversationHistory.Count - 1);
-                                return $"فشل الاتصال بـ Groq.\nكود الخطأ: {(int)response.StatusCode}\nالتفاصيل: {responseString}";
-                            }
+
+                            return $"فشل الاتصال بـ Groq.\nكود الخطأ: {(int)response.StatusCode}\nالتفاصيل: {responseString}";
                         }
                     }
-
-                    return "فشل الاتصال بعد عدة محاولات.";
                 }
+
+                return "فشل الاتصال بعد عدة محاولات.";
+            }
+            catch (OperationCanceledException)
+            {
+                // ✅ المستخدم أو النظام ألغى الطلب بشكل متعمد
+                if (conversationHistory.Count > 1)
+                    conversationHistory.RemoveAt(conversationHistory.Count - 1);
+
+                return "تم إلغاء الطلب.";
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                // ✅ ملف المفتاح غير موجود
+                return "خطأ: ملف المفتاح 'groq_apikey.txt' غير موجود في مجلد البرنامج.";
             }
             catch (Exception ex)
             {
-                return "حدث خطأ غير متوقع في الكود: " + ex.Message;
+                return "حدث خطأ غير متوقع: " + ex.Message;
             }
         }
 
+        // ✅ مسح الذاكرة بالكامل (تبدأ محادثة جديدة)
         public void ClearMemory()
         {
             conversationHistory.Clear();
+        }
+
+        // ✅ تطبيق IDisposable للتنظيف الصحيح
+        public void Dispose()
+        {
+            // _sharedClient static لا نتخلص منه هنا لأنه مشترك
+            conversationHistory?.Clear();
         }
     }
 }

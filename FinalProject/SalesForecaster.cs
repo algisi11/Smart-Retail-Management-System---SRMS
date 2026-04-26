@@ -36,36 +36,31 @@ namespace FinalProject
     {
         private string connectionString = @"Server=.;Database=SmartInventoryDB;Integrated Security=True;";
 
-        // ✅ الـ callback الذي سيُستدعى في كل خطوة لتحديث الـ Label في الـ UI
-        // يمكن تركه null إذا استُدعيت الدالة بدون UI (مثلاً من frmAIChat)
-        private Action<string> _progressCallback;
-
-        // دالة مساعدة داخلية لإرسال التحديث بأمان
-        private void Report(string message)
+        // ✅ دالة مركزية لحساب windowSize الآمن رياضياً لـ SSA
+        private int CalculateSafeWindowSize(int dataCount)
         {
-            _progressCallback?.Invoke(message);
+            int maxSafeWindow = (dataCount / 2) - 1;
+            return Math.Max(2, Math.Min(7, maxSafeWindow));
         }
 
         // =======================================================
-        // RunInventoryForecast — مع دعم تحديث الـ Label خطوة بخطوة
+        // 3. المحرك الجماعي: يعالج جميع المنتجات دفعة واحدة (معدل بشبكة الأمان)
         // =======================================================
-        public List<ForecastReportItem> RunInventoryForecast(Action<string> progressCallback = null)
+        public List<ForecastReportItem> RunInventoryForecast(Action<string> onProgress = null)
         {
-            _progressCallback = progressCallback;
+            void Report(string msg) => onProgress?.Invoke(msg);
 
             List<ForecastReportItem> finalReport = new List<ForecastReportItem>();
 
-            // --- الخطوة 1: جلب البيانات ---
-            Report("📡 الخطوة 1 من 5: جاري الاتصال بقاعدة البيانات...");
-
             DateTime endDate = DateTime.Today;
-            DateTime startDate = endDate.AddDays(-60);
+            DateTime startDate = endDate.AddDays(-30);
 
+            Report("⏳ جاري جلب بيانات المبيعات من قاعدة البيانات...");
             DataTable rawData = GetRawSalesData(startDate, endDate);
 
             if (rawData.Rows.Count == 0)
             {
-                Report("⚠️ لا توجد بيانات مبيعات في آخر 60 يوماً.");
+                Report("⚠️ لا توجد مبيعات مسجلة خلال الـ 30 يوماً الماضية.");
                 return finalReport;
             }
 
@@ -74,20 +69,16 @@ namespace FinalProject
                 .ToList();
 
             int totalProducts = groupedByProduct.Count;
+            int processedCount = 0;
 
-            // --- الخطوة 2: بناء التسلسل الزمني ---
-            Report($"🗂️ الخطوة 2 من 5: تم جلب ({totalProducts}) منتج — جاري بناء التسلسل الزمني...");
-
-            MLContext mlContext = new MLContext(seed: 0);
-            int currentIndex = 0;
+            Report($"✅ تم جلب البيانات. جاري تحليل {totalProducts} منتج...");
+            MLContext mlContext = new MLContext(seed: 42);
 
             foreach (var productGroup in groupedByProduct)
             {
-                currentIndex++;
                 string productName = productGroup.Key;
-
-                // --- الخطوة 3: تدريب النموذج لكل منتج ---
-                Report($"🧠 الخطوة 3 من 5: جاري تدريب نموذج SSA للمنتج ({currentIndex}/{totalProducts}): {productName}...");
+                processedCount++;
+                Report($"⏳ [{processedCount}/{totalProducts}] جاري تحليل: {productName}");
 
                 List<ProductSalesData> continuousHistory = new List<ProductSalesData>();
                 for (DateTime d = startDate; d <= endDate; d = d.AddDays(1))
@@ -102,31 +93,28 @@ namespace FinalProject
 
                 float totalHistoricalSales = continuousHistory.Sum(x => x.Quantity);
 
+                // تخطي المنتجات التي بياناتها كلها أصفار 
                 if (totalHistoricalSales == 0f)
                 {
                     finalReport.Add(new ForecastReportItem
                     {
                         ProductName = productName,
                         TotalPredictedNext7Days = 0,
-                        Status = "❄️ لا مبيعات في الـ 60 يوم الماضية"
+                        Status = "❄️ لم يُباع خلال الشهر"
                     });
                     continue;
                 }
 
-                int dataCount = continuousHistory.Count;
-                int windowSize = Math.Max(3, Math.Min(7, dataCount / 4));
-
                 try
                 {
-                    // --- الخطوة 4: التنبؤ ---
-                    Report($"📊 الخطوة 4 من 5: تشغيل خوارزمية SSA (Singular Spectrum Analysis) للمنتج ({currentIndex}/{totalProducts}): {productName}...");
-
                     IDataView dataView = mlContext.Data.LoadFromEnumerable(continuousHistory);
+                    int dataCount = continuousHistory.Count;
+                    int safeWindowSize = CalculateSafeWindowSize(dataCount);
 
                     var forecastingPipeline = mlContext.Forecasting.ForecastBySsa(
                         outputColumnName: nameof(ProductSalesPrediction.ForecastedSales),
                         inputColumnName: nameof(ProductSalesData.Quantity),
-                        windowSize: windowSize,
+                        windowSize: safeWindowSize,
                         seriesLength: dataCount,
                         trainSize: dataCount,
                         horizon: 7
@@ -136,61 +124,51 @@ namespace FinalProject
                     var forecastEngine = forecaster.CreateTimeSeriesEngine<ProductSalesData, ProductSalesPrediction>(mlContext);
 
                     ProductSalesPrediction prediction = forecastEngine.Predict();
-                    forecastEngine.Dispose();
 
-                    float totalPredictedRaw = prediction.ForecastedSales.Sum(s => Math.Max(0f, s));
+                    float totalPredictedRaw = prediction.ForecastedSales.Sum(s => Math.Max(0, s));
                     int finalPredictedInt = (int)Math.Round(totalPredictedRaw);
 
-                    // Fallback بالمتوسط إذا أعطى النموذج صفراً
-                    if (finalPredictedInt == 0)
+                    // 🌟 الحل الهندسي: شبكة الأمان (Smart Fallback)
+                    if (finalPredictedInt == 0 && totalHistoricalSales > 0)
                     {
-                        float avgDailySales = totalHistoricalSales / dataCount;
-                        finalPredictedInt = (int)Math.Ceiling(avgDailySales * 7);
-                        Report($"⚡ [{productName}]: النموذج أعطى صفراً، تم التحويل للمتوسط الحسابي ({finalPredictedInt} وحدة).");
+                        float dailyAverage = totalHistoricalSales / dataCount;
+                        finalPredictedInt = (int)Math.Ceiling(dailyAverage * 7);
                     }
 
                     finalReport.Add(new ForecastReportItem
                     {
                         ProductName = productName,
                         TotalPredictedNext7Days = finalPredictedInt,
-                        Status = finalPredictedInt > 0 ? "🔥 يحتاج تعزيز" : "❄️ مبيعات ضعيفة"
+                        Status = finalPredictedInt >= 5 ? "🔥 يحتاج تعزيز" : "📊 مبيعات مستقرة"
                     });
-                }
-                catch
-                {
-                    float avgDailySales = totalHistoricalSales / dataCount;
-                    int fallbackQty = (int)Math.Ceiling(avgDailySales * 7);
 
-                    Report($"⚠️ فشل نموذج SSA للمنتج [{productName}]، تم استخدام المتوسط الحسابي ({fallbackQty} وحدة).");
+                    forecastEngine.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SalesForecaster] فشل التنبؤ للمنتج '{productName}': {ex.Message}");
+                    Report($"⚠️ تعذر تحليل: {productName}");
 
                     finalReport.Add(new ForecastReportItem
                     {
                         ProductName = productName,
-                        TotalPredictedNext7Days = fallbackQty,
-                        Status = fallbackQty > 0
-                                                    ? "📊 تقدير بالمتوسط (بيانات غير كافية للنموذج)"
-                                                    : "❄️ لا توجد بيانات كافية"
+                        TotalPredictedNext7Days = 0,
+                        Status = "⚠️ خطأ في التنبؤ"
                     });
                 }
             }
 
-            // --- الخطوة 5: الانتهاء ---
-            int needsStock = finalReport.Count(r => r.Status.Contains("يحتاج تعزيز"));
-            Report($"✅ الخطوة 5 من 5: اكتمل التحليل! — تم تحليل ({totalProducts}) منتج، ({needsStock}) منتج يحتاج تعزيز فوري.");
-
+            Report($"✅ اكتمل التحليل! تم معالجة {totalProducts} منتج بنجاح.");
             return finalReport.OrderByDescending(r => r.TotalPredictedNext7Days).ToList();
         }
 
         // =======================================================
-        // 3. محرك التنبؤ الفردي (يستخدم من شاشة المحادثة الذكية)
+        // 4. محرك التنبؤ الفردي (يستخدم من شاشة AI Chat - معدل)
         // =======================================================
         public float[] PredictFutureSales(List<ProductSalesData> salesHistory, int daysToPredict = 7)
         {
-            if (salesHistory == null || salesHistory.Count == 0)
-                throw new Exception("لا توجد بيانات مبيعات لهذا المنتج.");
-
-            if (salesHistory.Count < 7)
-                throw new Exception("البيانات غير كافية. نحتاج 7 أيام على الأقل.");
+            if (salesHistory == null || salesHistory.Count < 14)
+                throw new Exception("البيانات غير كافية. نحتاج 14 يوماً على الأقل.");
 
             DateTime minDate = salesHistory.Min(s => s.Date);
             DateTime maxDate = salesHistory.Max(s => s.Date);
@@ -206,19 +184,22 @@ namespace FinalProject
                 });
             }
 
-            float totalSales = continuousHistory.Sum(x => x.Quantity);
-            MLContext mlContext = new MLContext(seed: 0);
+            float totalHistoricalSales = continuousHistory.Sum(x => x.Quantity);
+            if (totalHistoricalSales == 0f)
+                throw new Exception("جميع بيانات المبيعات أصفار، لا يمكن إجراء التنبؤ.");
+
+            MLContext mlContext = new MLContext(seed: 42);
 
             try
             {
                 IDataView dataView = mlContext.Data.LoadFromEnumerable(continuousHistory);
                 int dataCount = continuousHistory.Count;
-                int windowSize = Math.Max(3, Math.Min(7, dataCount / 4));
+                int safeWindowSize = CalculateSafeWindowSize(dataCount);
 
                 var forecastingPipeline = mlContext.Forecasting.ForecastBySsa(
                     outputColumnName: nameof(ProductSalesPrediction.ForecastedSales),
                     inputColumnName: nameof(ProductSalesData.Quantity),
-                    windowSize: windowSize,
+                    windowSize: safeWindowSize,
                     seriesLength: dataCount,
                     trainSize: dataCount,
                     horizon: daysToPredict
@@ -228,58 +209,58 @@ namespace FinalProject
                 var forecastEngine = forecaster.CreateTimeSeriesEngine<ProductSalesData, ProductSalesPrediction>(mlContext);
 
                 ProductSalesPrediction prediction = forecastEngine.Predict();
-                forecastEngine.Dispose();
 
-                float[] result = prediction.ForecastedSales
-                    .Select(s => (float)Math.Round(Math.Max(0f, s)))
+                float[] finalResult = prediction.ForecastedSales
+                    .Select(sales => (float)Math.Round(Math.Max(0, sales)))
                     .ToArray();
 
-                if (result.All(v => v == 0f) && totalSales > 0)
+                // 🌟 الحل الهندسي (Smart Fallback للمصفوفة الفردية)
+                if (finalResult.All(x => x == 0f))
                 {
-                    float avgDaily = totalSales / dataCount;
-                    for (int i = 0; i < result.Length; i++)
-                        result[i] = (float)Math.Ceiling(avgDaily);
+                    float dailyAverage = totalHistoricalSales / dataCount;
+                    float smoothPrediction = (float)Math.Ceiling(dailyAverage);
+                    for (int i = 0; i < finalResult.Length; i++)
+                    {
+                        finalResult[i] = smoothPrediction;
+                    }
                 }
 
-                return result;
+                forecastEngine.Dispose();
+                return finalResult;
             }
             catch (Exception ex)
             {
-                if (totalSales > 0)
-                {
-                    float avgDaily = totalSales / continuousHistory.Count;
-                    float[] fallback = new float[daysToPredict];
-                    for (int i = 0; i < daysToPredict; i++)
-                        fallback[i] = (float)Math.Ceiling(avgDaily);
-                    return fallback;
-                }
-
                 throw new Exception("حدث خطأ أثناء التنبؤ الفردي: " + ex.Message);
             }
         }
 
         // =======================================================
-        // 4. دالة مساعدة لجلب البيانات من SQL
+        // 5. دالة جلب البيانات من SQL
         // =======================================================
         private DataTable GetRawSalesData(DateTime startDate, DateTime endDate)
         {
             DataTable dt = new DataTable();
+
             string query = @"
                 SELECT 
                     p.ProductName, 
                     CAST(i.InvoiceDate AS DATE) AS SaleDate, 
-                    SUM(d.Quantity)             AS TotalQty
+                    SUM(d.Quantity) AS TotalQty
                 FROM SalesInvoiceDetails d
-                JOIN SalesInvoices i ON d.InvoiceID  = i.InvoiceID
-                JOIN Products      p ON d.ProductID  = p.ProductID
+                JOIN SalesInvoices i ON d.InvoiceID = i.InvoiceID
+                JOIN Products p ON d.ProductID = p.ProductID
                 WHERE CAST(i.InvoiceDate AS DATE) BETWEEN @Start AND @End
-                GROUP BY p.ProductName, CAST(i.InvoiceDate AS DATE)";
+                GROUP BY p.ProductName, CAST(i.InvoiceDate AS DATE)
+                ORDER BY p.ProductName, SaleDate";
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
                 SqlCommand cmd = new SqlCommand(query, conn);
                 cmd.Parameters.AddWithValue("@Start", startDate);
                 cmd.Parameters.AddWithValue("@End", endDate);
+
+                cmd.CommandTimeout = 60;
+
                 SqlDataAdapter da = new SqlDataAdapter(cmd);
                 da.Fill(dt);
             }
